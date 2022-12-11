@@ -1,0 +1,22 @@
+=head2 Wed Jul  2 21:07:47 2003: C<Module> L<MOI|MOI>
+
+=over 4
+
+=item *
+
+C<installed into: /home/nag/cvs/moiNAG/build/local/share/perl/5.8.0>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.02>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

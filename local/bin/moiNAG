@@ -1,0 +1,247 @@
+#!/usr/bin/perl
+#
+# $Header: /SPACE/cycle/cvsroot/moi-perl/progs/moiNAG/scripts/moiNAG,v 1.1 2003/07/01 23:20:07 leo Exp $
+#
+# Copyright (c) 2003 Richard Leopold <rl@0n3.org>. All rights reserved.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
+##
+
+use 5.008;
+use strict;
+use warnings;
+
+use sigtrap qw(die INT QUIT TERM);
+
+use Getopt::Long;
+use Pod::Usage;
+
+use WWW::Search;
+
+use MOI::Base qw(:moiLogger);
+use MOI::NetArt::Generator;
+
+my $opts = {
+	help           => 0,
+	man            => 0,
+	title          => 'NetArt Generator',
+	initiator      => '',
+	search_cfg     => undef,
+	search_engine  => [],
+	search_max     => 33,
+	dl_max_size    => '333k',
+	max_depth      => 7,
+	max_nodes      => 777,
+	outfile        => '/tmp/moiNAG_RESULT.html',
+	logfile        =>  undef,
+	verbose        => 0,
+	debug          => 0
+};
+
+GetOptions($opts,
+	'title=s',
+	'initiator=s',
+	'search_cfg=s',
+	'search_engine=s',
+	'search_max=i',
+	'dl_max_size=s',
+	'max_depth=i',
+	'max_nodes=i',
+	'outfile=s',
+	'logfile=s',
+	'help|?', 'man', 'verbose|v', 'debug|d') or pod2usage(2);
+pod2usage(0) if scalar @ARGV > 0;
+pod2usage(1) if $opts->{help};
+pod2usage(-verbose => 2) if $opts->{man};
+
+# sets global debug flag
+$MOI::Base::DEBUG = 1 if $opts->{debug};
+
+sub _log_filter {
+	my $str = shift | '';
+	
+	# filtering the key for Google ...
+	$str =~ s/('key'\s*=>\s*)'\S+'/$1'<<<- CENSORED ->>>'/g;
+	return $str;
+}
+
+# configuring logger backends ...
+# logging to STDOUT
+$MOI::LOG->add(Std => {
+	channel  => DEBUG|INFO|NOTICE|WARNING|ERR|CRIT|ALERT|EMERG,
+	format_cb => sub { 
+	                my $str = shift; 
+	                my $ch  = shift;
+	                $str =~ s/\n/\n\t/g;
+	                return MOI::Logger::Base::CHANNELS->{$ch} . ":\t$str\n";
+	             },
+	filter_cb => \&_log_filter
+}) if $opts->{verbose};
+
+# generic logfile 
+$MOI::LOG->add(File => { 
+	name      => 'moi',
+	filename  => '/tmp/moiNAG.log',
+	channel   => DEBUG|INFO|NOTICE|WARNING|ERR|CRIT|ALERT|EMERG,
+	filter_cb => \&_log_filter
+});
+
+# customers logfile
+$MOI::LOG->add(
+	File => { 
+	name      => $opts->{logfile},
+	filename  => $opts->{logfile},
+	channel   => ($opts->{debug} ? DEBUG : 0)|INFO|NOTICE|WARNING|ERR|CRIT|ALERT|EMERG,
+	filter_cb => \&_log_filter
+}) if defined $opts->{logfile};
+
+my $ng = eval 'my $x =
+	MOI::NetArt::Generator->new(
+		title                 => $opts->{title},
+		initiator             => $opts->{initiator},
+		search_backends       => $opts->{search_engine},
+		search_maximum        => $opts->{search_max},
+		max_doc_size          => $opts->{dl_max_size},
+		outfile               => $opts->{outfile},
+		dadanodes             => { 
+		                  max_stack_out_size => $opts->{max_depth},
+		                  max_nodes_out      => $opts->{max_nodes},
+		                         },
+		'
+		# only append if set ...
+		. ( ($opts->{search_cfg} && -f $opts->{search_cfg})
+			? 'search_cfg            => $opts->{search_cfg},' 
+			: '')
+	.');' ;
+
+die $@ if $@;
+
+$ng->generate();
+
+
+
+__END__
+
+=pod
+
+=head1 NAME
+
+moiNAG - a commandline interface to generate a peace of netart
+
+=head1 SYNOPSIS
+
+ $ moiNAG [ --title <string> ] \
+          [ --initiator <string> ] \
+          [ --search_cfg <filename> ] \
+          [ --search_engine <backend> [--search_engine ...]]  \
+          [ --search_max <number> ] \
+          [ --dl_max_size <size> ] \
+          [ --max_depth <number> ] \
+          [ --max_nodes <number> ] \
+          [ --outfile <filename> ] \
+          [ --logfile <filename> ] \
+          [ --verbose ] \
+          [ --debug ] \
+          [ --help|? ] \
+          [ --man ]
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--title>
+
+Sets the search string for the search backends as I<title> of the peace of art 
+to generate.
+
+Default: 'Netart Generator'
+
+=item B<--initiators>
+
+Sets the initiator of this peace of art.
+
+Default: ''
+
+=item B<--search_cfg>
+
+Configuration file name for the search engine. See 
+L<MOI::NetArt::Generator::SearchEngine> for more info.
+
+Default: undef
+
+=item B<--search_engine>
+
+Setting the searchbackends to query. This option can be used multiple.
+
+Default: the configured in L</--search_cfg>
+
+=item B<--search_max>
+
+Set the maximum number of hits to return by the search engine
+
+Default: 33
+
+=item B<--dl_max_size>
+
+Set the maximum Content-Size to download per document.
+
+Default: 333k
+
+=item B<--max_depth>
+
+Set the maximum  nested depth of result document
+
+Default: 7
+
+=item B<--max_depth>
+
+Set the maximum number of nodes for the result document
+
+Default: 777
+
+=item B<--outfile>
+
+Set the filename of the generated peace of art ..
+
+Default: /tmp/moiNAG_RESULT.html
+
+=item B<--logfile>
+
+Set the logfilename for logging messages during the generation ...
+If not set, then no logging.
+
+Default: no logging
+
+=item B<--debug>
+
+toggle debug messages
+
+=item B<-help>
+
+Print a brief help message and exits.
+
+=item B<-man>
+
+Prints the manual page and exits.
+
+=back
+
+=head1 DESCRIPTION
+
+
+=head1 SEE ALSO
+
+
+=head1 AUTHOR
+
+Richard Leopold, E<lt>moi-perl@leo.0n3.orgE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2003 by Richard Leopold
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself. 
+
+=cut

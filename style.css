@@ -1,0 +1,26 @@
+/* $Header: /SPACE/cycle/cvsroot/moi-perl/progs/moiNAG/htdocs/style.css,v 1.2 2003/07/02 18:59:41 leo Exp $ */
+
+body {
+	font-size:10pt;
+}
+
+table { 
+	background-color:#DDDDDD;
+	border:thin solid black;
+	empty-cells:show; 
+	border-spacing:5px
+}
+
+th {
+	background-color:#DDFFDD;
+}
+
+.submit {
+	background-color:orange;
+}
+.title  { 
+	font-size:10pt;
+}
+.tiny  { 
+	font-size:8pt;
+}
